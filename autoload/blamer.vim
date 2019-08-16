@@ -80,10 +80,9 @@ function! blamer#GetMessage(file, line_number, line_count) abort
   return l:message
 endfunction
 
-function! blamer#SetVirtualText(line_number, message) abort
-  let l:buffer_number = bufnr('')
+function! blamer#SetVirtualText(buffer_number, line_number, message) abort
   let l:line_index = a:line_number - 1
-  call nvim_buf_set_virtual_text(l:buffer_number, s:blamer_namespace, l:line_index, [[s:blamer_prefix . a:message, 'Blamer']], {})
+  call nvim_buf_set_virtual_text(a:buffer_number, s:blamer_namespace, l:line_index, [[s:blamer_prefix . a:message, 'Blamer']], {})
 endfunction
 
 function! blamer#Show() abort
@@ -92,9 +91,10 @@ function! blamer#Show() abort
     return
   endif
 
+  let l:buffer_number = bufnr('')
 	let l:line_numbers = s:GetLines()
 	for line_number in l:line_numbers
-    let l:message = blamer#GetMessage(l:file, line_number, '+1')
+    let l:message = blamer#GetMessage(l:buffer_number, l:file, line_number, '+1')
     call blamer#SetVirtualText(line_number, l:message)
   endfor
 endfunction
