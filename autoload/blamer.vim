@@ -9,6 +9,7 @@ set cpo&vim
 let s:git_root = ''
 let s:blamer_prefix = get(g:, 'blamer_prefix', '   ')
 let s:blamer_template = get(g:, 'blamer_template', '<committer>, <committer-time> • <summary>')
+let s:blamer_date_format = get(g:, 'blamer_date_format', '%d/%m/%y %H:%M')
 let s:blamer_user_name = ''
 let s:blamer_user_email = ''
 let s:blamer_info_fields = filter(map(split(s:blamer_template, ' '), {key, val -> matchstr(val, '\m\C<\zs.\{-}\ze>')}), {idx, val -> val != ''})
@@ -75,7 +76,7 @@ function! blamer#GetMessage(file, line_number, line_count) abort
     let l:property = l:words[0]
     let l:value = join(l:words[1:], ' ')
     if  l:property =~? 'time'
-      let l:value = strftime('%d/%m/%y %H:%M', l:value)
+      let l:value = strftime(s:blamer_date_format, l:value)
     endif
     let l:value = escape(l:value, '&')
     let l:value = escape(l:value, '~')

@@ -66,6 +66,16 @@ Available options: `<author>`, `<author-mail>`, `<author-time>`, `<committer>`, 
 let g:blamer_template = '<committer> <summary>'
 ```
 
+### Date format
+
+The [fomrat](https://devhints.io/datetime#strftime-format) of the date fields. (`<author-time>`, `<committer-time>`)
+
+Default: `'%d/%m/%y %H:%M'`
+
+```
+let g:blamer_date_format = '%d/%m/%y'
+```
+
 #### Highlight
 
 The color of the blame message.
