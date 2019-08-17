@@ -13,6 +13,14 @@ let s:blamer_user_email = split(system('git config --get user.email'), '\n')[0]
 let s:blamer_info_fields = filter(map(split(s:blamer_template, ' '), {key, val -> matchstr(val, '\m\C<\zs.\{-}\ze>')}), {idx, val -> val != ''})
 let s:blamer_namespace = nvim_create_namespace('blamer')
 
+function! s:Head(array) abort
+  if len(a:array) == 0
+    return ''
+  endif
+
+  return a:array[0]
+endfunction
+
 function! s:GetLines() abort
   let l:visual_line_number = line('v')
   let l:cursor_line_number = line('.')
