@@ -164,7 +164,7 @@ function! blamer#Init() abort
 
   augroup blamer
     autocmd!
-    autocmd BufWritePost,CursorMoved * :call blamer#Refresh()
+    autocmd BufEnter,BufWritePost,CursorMoved * :call blamer#Refresh()
   augroup END
 endfunction
 
