@@ -10,7 +10,7 @@ let s:git_root = ''
 let s:blamer_prefix = get(g:, 'blamer_prefix', '   ')
 let s:blamer_template = get(g:, 'blamer_template', '<committer>, <committer-time> • <summary>')
 let s:blamer_user_name = ''
-let s:blamer_user_email = split(system('git config --get user.email'), '\n')[0]
+let s:blamer_user_email = ''
 let s:blamer_info_fields = filter(map(split(s:blamer_template, ' '), {key, val -> matchstr(val, '\m\C<\zs.\{-}\ze>')}), {idx, val -> val != ''})
 let s:blamer_namespace = nvim_create_namespace('blamer')
 let s:blamer_delay = get(g:, 'blamer_delay', 1000)
@@ -171,6 +171,7 @@ function! blamer#Init() abort
   endif
 
   let s:blamer_user_name = s:Head(split(system('git config --get user.name'), '\n'))
+  let s:blamer_user_email = s:Head(split(system('git config --get user.email'), '\n'))
 
   augroup blamer
     autocmd!
