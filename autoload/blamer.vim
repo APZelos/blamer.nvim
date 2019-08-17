@@ -6,12 +6,31 @@ let g:blamer_autoloaded = 1
 let s:save_cpo = &cpo
 set cpo&vim
 
+let s:git_root = ''
 let s:blamer_prefix = get(g:, 'blamer_prefix', '   ')
 let s:blamer_template = get(g:, 'blamer_template', '<committer>, <committer-time> • <summary>')
 let s:blamer_user_name = split(system('git config --get user.name'), '\n')[0]
 let s:blamer_user_email = split(system('git config --get user.email'), '\n')[0]
 let s:blamer_info_fields = filter(map(split(s:blamer_template, ' '), {key, val -> matchstr(val, '\m\C<\zs.\{-}\ze>')}), {idx, val -> val != ''})
 let s:blamer_namespace = nvim_create_namespace('blamer')
+let s:blamer_delay = get(g:, 'blamer_delay', 1000)
+let s:blamer_timer_id = -1
+
+function! s:Head(array) abort
+  if len(a:array) == 0
+    return ''
+  endif
+
+  return a:array[0]
+endfunction
+
+function! s:IsFileInPath(file_path, path) abort
+  if a:file_path =~? a:path
+    return 1
+  else
+    return 0
+  endif
+endfunction
 
 function! s:GetLines() abort
   let l:visual_line_number = line('v')
@@ -43,6 +62,10 @@ function! blamer#GetMessage(file, line_number, line_count) abort
       echo '[blamer.nvim] ' . l:result
       return ''
     endif
+  endif
+
+  if l:result =~? 'no matches found'
+    return ''
   endif
 
   let l:lines = split(l:result, '\n')
@@ -80,28 +103,77 @@ function! blamer#GetMessage(file, line_number, line_count) abort
   return l:message
 endfunction
 
-function! blamer#SetVirtualText(line_number, message) abort
-  let l:buffer_number = bufnr('')
+function! blamer#SetVirtualText(buffer_number, line_number, message) abort
   let l:line_index = a:line_number - 1
-  call nvim_buf_set_virtual_text(l:buffer_number, s:blamer_namespace, l:line_index, [[s:blamer_prefix . a:message, 'Blamer']], {})
+  call nvim_buf_set_virtual_text(a:buffer_number, s:blamer_namespace, l:line_index, [[s:blamer_prefix . a:message, 'Blamer']], {})
 endfunction
 
 function! blamer#Show() abort
-  let l:file = expand('%')
-  if l:file == ''
+  let l:file_path = expand('%:p')
+  if s:IsFileInPath(l:file_path, s:git_root) == 0
     return
   endif
 
+  let l:buffer_number = bufnr('')
 	let l:line_numbers = s:GetLines()
 	for line_number in l:line_numbers
-    let l:message = blamer#GetMessage(l:file, line_number, '+1')
-    call blamer#SetVirtualText(line_number, l:message)
+    let l:message = blamer#GetMessage(l:file_path, line_number, '+1')
+    call blamer#SetVirtualText(l:buffer_number, line_number, l:message)
   endfor
 endfunction
 
 function! blamer#Hide() abort
   let l:current_buffer_number = bufnr('')
   call nvim_buf_clear_namespace(l:current_buffer_number, s:blamer_namespace, 0, -1)
+endfunction
+
+function! blamer#Refresh() abort
+  if g:blamer_enabled == 0
+    return
+  endif
+
+  call timer_stop(s:blamer_timer_id)
+  call blamer#Hide()
+  let s:blamer_timer_id = timer_start(s:blamer_delay, { tid -> blamer#Show() })
+endfunction
+
+function! blamer#Enable() abort
+  if g:blamer_enabled == 1
+    return
+  endif
+
+  let g:blamer_enabled = 1
+  call blamer#Init()
+endfunction
+
+function! blamer#Disable() abort
+  if g:blamer_enabled == 0
+    return
+  endif
+
+  let g:blamer_enabled = 0
+  autocmd! blamer
+  call timer_stop(s:blamer_timer_id)
+  let s:blamer_timer_id = -1
+endfunction
+
+function! blamer#Init() abort
+  if g:blamer_enabled == 0
+    return
+  endif
+
+  let l:result = split(system('git rev-parse --show-toplevel 2>/dev/null'), '\n')
+  let s:git_root = s:Head(l:result)
+
+  if s:git_root == ''
+    let g:blamer_enabled = 0
+    return
+  endif
+
+  augroup blamer
+    autocmd!
+    autocmd BufEnter,BufWritePost,CursorMoved * :call blamer#Refresh()
+  augroup END
 endfunction
 
 let &cpo = s:save_cpo
