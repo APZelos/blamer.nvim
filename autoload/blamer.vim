@@ -45,6 +45,10 @@ function! blamer#GetMessage(file, line_number, line_count) abort
     endif
   endif
 
+  if l:result =~? 'no matches found'
+    return ''
+  endif
+
   let l:lines = split(l:result, '\n')
   let l:info = {}
   for line in l:lines
