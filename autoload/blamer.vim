@@ -24,6 +24,14 @@ function! s:Head(array) abort
   return a:array[0]
 endfunction
 
+function! s:IsFileInPath(file_path, path) abort
+  if a:file_path =~? a:path
+    return 1
+  else
+    return 0
+  endif
+endfunction
+
 function! s:GetLines() abort
   let l:visual_line_number = line('v')
   let l:cursor_line_number = line('.')
@@ -101,15 +109,15 @@ function! blamer#SetVirtualText(buffer_number, line_number, message) abort
 endfunction
 
 function! blamer#Show() abort
-  let l:file = expand('%')
-  if l:file == ''
+  let l:file_path = expand('%:p')
+  if s:IsFileInPath(l:file_path, s:git_root) == 0
     return
   endif
 
   let l:buffer_number = bufnr('')
 	let l:line_numbers = s:GetLines()
 	for line_number in l:line_numbers
-    let l:message = blamer#GetMessage(l:file, line_number, '+1')
+    let l:message = blamer#GetMessage(l:file_path, line_number, '+1')
     call blamer#SetVirtualText(l:buffer_number, line_number, l:message)
   endfor
 endfunction
