@@ -9,7 +9,7 @@ set cpo&vim
 let s:git_root = ''
 let s:blamer_prefix = get(g:, 'blamer_prefix', '   ')
 let s:blamer_template = get(g:, 'blamer_template', '<committer>, <committer-time> • <summary>')
-let s:blamer_user_name = split(system('git config --get user.name'), '\n')[0]
+let s:blamer_user_name = ''
 let s:blamer_user_email = split(system('git config --get user.email'), '\n')[0]
 let s:blamer_info_fields = filter(map(split(s:blamer_template, ' '), {key, val -> matchstr(val, '\m\C<\zs.\{-}\ze>')}), {idx, val -> val != ''})
 let s:blamer_namespace = nvim_create_namespace('blamer')
@@ -169,6 +169,8 @@ function! blamer#Init() abort
     let g:blamer_enabled = 0
     return
   endif
+
+  let s:blamer_user_name = s:Head(split(system('git config --get user.name'), '\n'))
 
   augroup blamer
     autocmd!
