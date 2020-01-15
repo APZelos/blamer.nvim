@@ -2,6 +2,8 @@
 
 A git blame plugin for neovim inspired by VS Code's GitLens plugin.
 
+![blamer gif](https://res.cloudinary.com/djg49e1u9/image/upload/c_crop,h_336/v1579092411/blamer_mkv07c.gif)
+
 ## Installation
 
 #### vim-plug
