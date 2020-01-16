@@ -70,7 +70,7 @@ let g:blamer_template = '<committer> <summary>'
 
 ### Date format
 
-The [fomrat](https://devhints.io/datetime#strftime-format) of the date fields. (`<author-time>`, `<committer-time>`)
+The [format](https://devhints.io/datetime#strftime-format) of the date fields. (`<author-time>`, `<committer-time>`)
 
 Default: `'%d/%m/%y %H:%M'`
 
