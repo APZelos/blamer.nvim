@@ -71,6 +71,8 @@ function! blamer#GetMessage(file, line_number, line_count) abort
 
   let l:lines = split(l:result, '\n')
   let l:info = {}
+  let l:info['commit-short'] = split(l:lines[0], ' ')[0][:7]
+  let l:info['commit-long'] = split(l:lines[0], ' ')[0]
   for line in l:lines
     let l:words = split(line, ' ')
     let l:property = l:words[0]
