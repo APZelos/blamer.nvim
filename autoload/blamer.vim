@@ -142,7 +142,7 @@ function! blamer#CreatePopup(buffer_number, line_number, message) abort
   \ 'wrap': 0,
   \ 'highlight': 'Blamer'
   \})
-endfunctio
+endfunction
 
 function! blamer#Show() abort
   if g:blamer_enabled == 0 || s:missing_popup_feature
