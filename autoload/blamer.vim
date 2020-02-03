@@ -145,7 +145,7 @@ function! blamer#CreatePopup(buffer_number, line_number, message) abort
 endfunctio
 
 function! blamer#Show() abort
-  if g:blamer_enabled == 0 || s:is_not_work
+  if g:blamer_enabled == 0 || s:missing_popup_feature
     return
   endif
 
@@ -216,7 +216,7 @@ function! blamer#Init() abort
     return
   endif
 
-  if s:is_not_work
+  if s:missing_popup_feature
     echohl ErrorMsg
     echomsg '[blamer.nvim] Needs popup feature.'
     echohl None
