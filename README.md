@@ -48,6 +48,16 @@ Default: `1000`
 let g:blamer_delay = 500
 ```
 
+#### Show in visual modes
+
+Enables / disables blamer in visual modes.
+
+Default: `1`
+
+```
+let g:blamer_show_in_visual_modes = 0
+```
+
 #### Prefix
 
 The prefix that will be added to the template.
@@ -64,7 +74,7 @@ The template for the blame message that will be shown.
 
 Default: `'<committer>, <committer-time> • <summary>'`
 
-Available options: `<author>`, `<author-mail>`, `<author-time>`, `<committer>`, `<committer-mail>`, `<committer-time>`, `<summary>`.
+Available options: `<author>`, `<author-mail>`, `<author-time>`, `<committer>`, `<committer-mail>`, `<committer-time>`, `<summary>`, `<commit-short>`, `<commit-long>`.
 
 ```
 let g:blamer_template = '<committer> <summary>'
