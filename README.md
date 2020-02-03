@@ -46,6 +46,16 @@ Default: `1000`
 let g:blamer_delay = 500
 ```
 
+#### Show in visual modes
+
+Enables / disables blamer in visual modes.
+
+Default: `1`
+
+```
+let g:blamer_show_in_visual_modes = 0
+```
+
 #### Prefix
 
 The prefix that will be added to the template.

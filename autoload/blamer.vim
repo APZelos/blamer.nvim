@@ -15,6 +15,7 @@ let s:blamer_user_email = ''
 let s:blamer_info_fields = filter(map(split(s:blamer_template, ' '), {key, val -> matchstr(val, '\m\C<\zs.\{-}\ze>')}), {idx, val -> val != ''})
 let s:blamer_namespace = nvim_create_namespace('blamer')
 let s:blamer_delay = get(g:, 'blamer_delay', 1000)
+let s:blamer_show_in_visual_modes = get(g:, 'blamer_show_in_visual_modes', 1)
 let s:blamer_timer_id = -1
 
 function! s:Head(array) abort
@@ -119,6 +120,12 @@ function! blamer#Show() abort
 
   let l:buffer_number = bufnr('')
 	let l:line_numbers = s:GetLines()
+
+	let l:is_in_visual_mode = len(l:line_numbers) > 1
+	if l:is_in_visual_mode == 1 && s:blamer_show_in_visual_modes == 0
+	  return
+	endif
+
 	for line_number in l:line_numbers
     let l:message = blamer#GetMessage(l:file_path, line_number, '+1')
     call blamer#SetVirtualText(l:buffer_number, line_number, l:message)
