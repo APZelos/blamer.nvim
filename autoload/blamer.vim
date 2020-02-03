@@ -23,7 +23,7 @@ let s:blamer_delay = get(g:, 'blamer_delay', 1000)
 let s:blamer_timer_id = -1
 
 let s:is_windows = has('win16') || has('win32') || has('win64') || has('win95')
-let s:is_not_work = !has('nvim') && !exists('*popup_create')
+let s:missing_popup_feature = !has('nvim') && !exists('*popup_create')
 
 function! s:Head(array) abort
   if len(a:array) == 0
