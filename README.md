@@ -62,7 +62,7 @@ The template for the blame message that will be shown.
 
 Default: `'<committer>, <committer-time> • <summary>'`
 
-Available options: `<author>`, `<author-mail>`, `<author-time>`, `<committer>`, `<committer-mail>`, `<committer-time>`, `<summary>`.
+Available options: `<author>`, `<author-mail>`, `<author-time>`, `<committer>`, `<committer-mail>`, `<committer-time>`, `<summary>`, `<commit-short>`, `<commit-long>`.
 
 ```
 let g:blamer_template = '<committer> <summary>'
