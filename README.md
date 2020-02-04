@@ -1,8 +1,10 @@
 # blamer.nvim
 
-A git blame plugin for neovim inspired by VS Code's GitLens plugin.
+A git blame plugin for (neo)vim inspired by VS Code's GitLens plugin.
 
 ![blamer gif](https://res.cloudinary.com/djg49e1u9/image/upload/c_crop,h_336/v1579092411/blamer_mkv07c.gif)
+
+Note: For Vim, a popup feature is required.
 
 ## Installation
 
@@ -24,7 +26,7 @@ call plug#end()
 
 #### Enabled
 
-Enables blamer on neovim startup.
+Enables blamer on (neo)vim startup.
 
 You can toggle blamer on/off with the `:BlamerToggle` command.
 

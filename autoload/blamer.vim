@@ -13,10 +13,18 @@ let s:blamer_date_format = get(g:, 'blamer_date_format', '%d/%m/%y %H:%M')
 let s:blamer_user_name = ''
 let s:blamer_user_email = ''
 let s:blamer_info_fields = filter(map(split(s:blamer_template, ' '), {key, val -> matchstr(val, '\m\C<\zs.\{-}\ze>')}), {idx, val -> val != ''})
-let s:blamer_namespace = nvim_create_namespace('blamer')
+if exists('*nvim_create_namespace')
+  let s:blamer_namespace = nvim_create_namespace('blamer')
+endif
+if exists('*prop_type_add')
+  let s:prop_type_name = 'blamer_popup_marker'
+endif
 let s:blamer_delay = get(g:, 'blamer_delay', 1000)
 let s:blamer_show_in_visual_modes = get(g:, 'blamer_show_in_visual_modes', 1)
 let s:blamer_timer_id = -1
+
+let s:is_windows = has('win16') || has('win32') || has('win64') || has('win95')
+let s:missing_popup_feature = !has('nvim') && !exists('*popup_create')
 
 function! s:Head(array) abort
   if len(a:array) == 0
@@ -112,8 +120,39 @@ function! blamer#SetVirtualText(buffer_number, line_number, message) abort
   call nvim_buf_set_virtual_text(a:buffer_number, s:blamer_namespace, l:line_index, [[s:blamer_prefix . a:message, 'Blamer']], {})
 endfunction
 
+function! blamer#CreatePopup(buffer_number, line_number, message) abort
+  let l:col = strlen(getline(a:line_number))
+  let l:col = l:col == 0 ? 1 : l:col
+  let l:propid = a:line_number . l:col
+
+  if empty(prop_type_get(s:prop_type_name, {'bufnr': a:buffer_number}))
+    call prop_type_add(s:prop_type_name, {'bufnr': a:buffer_number})
+  endif
+
+  call prop_add(a:line_number, l:col, {
+  \ 'type': s:prop_type_name,
+  \ 'bufnr': a:buffer_number,
+  \ 'length': 0,
+  \ 'id': l:propid,
+  \})
+
+  let l:popup_winid = popup_create(s:blamer_prefix . a:message, {
+  \ 'textprop': 'blamer_popup_marker',
+  \ 'textpropid': l:propid,
+  \ 'line': -1,
+  \ 'col': l:col == 1 ? 1 : 2,
+  \ 'fixed': 1,
+  \ 'wrap': 0,
+  \ 'highlight': 'Blamer'
+  \})
+endfunction
+
 function! blamer#Show() abort
-  let l:file_path = expand('%:p')
+  if g:blamer_enabled == 0 || s:missing_popup_feature
+    return
+  endif
+
+  let l:file_path = s:substitute_path_separator(expand('%:p'))
   if s:IsFileInPath(l:file_path, s:git_root) == 0
     return
   endif
@@ -128,13 +167,27 @@ function! blamer#Show() abort
 
 	for line_number in l:line_numbers
     let l:message = blamer#GetMessage(l:file_path, line_number, '+1')
-    call blamer#SetVirtualText(l:buffer_number, line_number, l:message)
+    if has('nvim')
+      call blamer#SetVirtualText(l:buffer_number, line_number, l:message)
+    else
+      call blamer#CreatePopup(l:buffer_number, line_number, l:message)
+    endif
   endfor
 endfunction
 
 function! blamer#Hide() abort
   let l:current_buffer_number = bufnr('')
-  call nvim_buf_clear_namespace(l:current_buffer_number, s:blamer_namespace, 0, -1)
+  if has('nvim')
+    call nvim_buf_clear_namespace(l:current_buffer_number, s:blamer_namespace, 0, -1)
+  else
+    if !empty(prop_type_get(s:prop_type_name, {'bufnr': l:current_buffer_number}))
+      call prop_remove({
+      \ 'type': s:prop_type_name,
+      \ 'bufnr': l:current_buffer_number,
+      \ 'all': 1,
+      \})
+    endif
+  endif
 endfunction
 
 function! blamer#Refresh() abort
@@ -172,7 +225,18 @@ function! blamer#Init() abort
     return
   endif
 
-  let l:result = split(system('git rev-parse --show-toplevel 2>/dev/null'), '\n')
+  if s:missing_popup_feature
+    echohl ErrorMsg
+    echomsg '[blamer.nvim] Needs popup feature.'
+    echohl None
+    return
+  endif
+
+  if s:is_windows
+    let l:result = split(system('git rev-parse --show-toplevel 2>NUL'), '\n')
+  else
+    let l:result = split(system('git rev-parse --show-toplevel 2>/dev/null'), '\n')
+  endif
   let s:git_root = s:Head(l:result)
 
   if s:git_root == ''
@@ -187,6 +251,11 @@ function! blamer#Init() abort
     autocmd!
     autocmd BufEnter,BufWritePost,CursorMoved * :call blamer#Refresh()
   augroup END
+endfunction
+
+" from neomru
+function! s:substitute_path_separator(path) abort
+  return s:is_windows ? substitute(a:path, '\\', '/', 'g') : a:path
 endfunction
 
 let &cpo = s:save_cpo
