@@ -22,7 +22,7 @@ call blamer#Init()
 
 :command! -nargs=0 BlamerToggle call BlamerToggle()
 
-highlight link Blamer Comment
+highlight default link Blamer Comment
 
 let &cpo = s:save_cpo
 unlet s:save_cpo
