@@ -59,29 +59,33 @@ function! blamer#GetMessage(file, line_number, line_count) abort
   let l:command = 'git --no-pager blame -p -L ' . a:line_number . ',' . a:line_count . ' -- ' . a:file
   let l:result = system(l:command)
 
-  if l:result =~? 'fatal'
-    if l:result =~? 'not a git repository'
+  let l:lines = split(l:result, '\n')
+  let l:info = {}
+  let l:info['commit-short'] = split(l:lines[0], ' ')[0][:7]
+  let l:info['commit-long'] = split(l:lines[0], ' ')[0]
+  let l:hash_is_empty = empty(matchstr(info['commit-long'],'\c[0-9a-f]\{40}'))
+
+  if l:hash_is_empty
+    if l:result =~? 'fatal' && l:result =~? 'not a git repository'
       let g:blamer_enabled = 0
       echo '[blamer.nvim] Not a git repository'
+      return ''
+    endif
+
+    " Known git errors will be silenced
+    if l:result =~? 'no matches found'
       return ''
     elseif l:result =~? 'no such path'
       return ''
     elseif l:result =~? 'is outside repository'
       return ''
-    else
-      echo '[blamer.nvim] ' . l:result
-      return ''
     endif
-  endif
 
-  if l:result =~? 'no matches found'
+    " Echo unkown errors in order to catch them
+    echo '[blamer.nvim] ' . l:result
     return ''
   endif
 
-  let l:lines = split(l:result, '\n')
-  let l:info = {}
-  let l:info['commit-short'] = split(l:lines[0], ' ')[0][:7]
-  let l:info['commit-long'] = split(l:lines[0], ' ')[0]
   for line in l:lines[1:]
     let l:words = split(line, ' ')
     let l:property = l:words[0]
