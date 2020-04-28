@@ -7,6 +7,7 @@ let s:save_cpo = &cpo
 set cpo&vim
 
 let g:blamer_enabled = get(g:, 'blamer_enabled', 0)
+let g:blamer_relative_time = get(g:, 'blamer_relative_time', 0)
 
 function! BlamerToggle() abort
   if g:blamer_enabled == 0
