@@ -68,6 +68,8 @@ function! blamer#GetMessage(file, line_number, line_count) abort
       return ''
     elseif l:result =~? 'is outside repository'
       return ''
+    elseif l:result =~? 'has only' && l:result =~? 'lines'
+      return ''
     else
       echo '[blamer.nvim] ' . l:result
       return ''
