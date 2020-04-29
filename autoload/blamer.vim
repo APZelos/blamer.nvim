@@ -22,6 +22,7 @@ endif
 let s:blamer_delay = get(g:, 'blamer_delay', 1000)
 let s:blamer_show_in_visual_modes = get(g:, 'blamer_show_in_visual_modes', 1)
 let s:blamer_timer_id = -1
+let s:blamer_relative_time = get(g:, 'blamer_relative_time', 0)
 
 let s:is_windows = has('win16') || has('win32') || has('win64') || has('win95')
 let s:missing_popup_feature = !has('nvim') && !exists('*popup_create')
@@ -122,7 +123,7 @@ function! blamer#GetMessage(file, line_number, line_count) abort
     let l:property = l:words[0]
     let l:value = join(l:words[1:], ' ')
     if  l:property =~? 'time'
-      if(g:blamer_relative_time)
+      if(s:blamer_relative_time)
         let l:value = s:GetRelativeTime(l:value)
       else
         let l:value = strftime(s:blamer_date_format, l:value)

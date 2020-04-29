@@ -90,6 +90,16 @@ Default: `'%d/%m/%y %H:%M'`
 let g:blamer_date_format = '%d/%m/%y'
 ```
 
+### Relative time
+
+Shows commit date in relative format
+
+Default: `0`
+
+```
+let g:blamer_relative_time = 1
+```
+
 #### Highlight
 
 The color of the blame message.
