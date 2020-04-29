@@ -158,6 +158,11 @@ function! blamer#Show() abort
     return
   endif
 
+  let l:is_buffer_special = &buftype != '' ? 1 : 0
+  if is_buffer_special
+    return
+  endif
+
   let l:file_path = s:substitute_path_separator(expand('%:p'))
   if s:IsFileInPath(l:file_path, s:git_root) == 0
     return
