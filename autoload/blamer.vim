@@ -117,6 +117,8 @@ function! blamer#GetMessage(file, line_number, line_count) abort
       return ''
     elseif l:result =~? 'has only' && l:result =~? 'lines'
       return ''
+    elseif l:result =~? 'no such ref'
+      return ''
     endif
 
     " Echo unkown errors in order to catch them
