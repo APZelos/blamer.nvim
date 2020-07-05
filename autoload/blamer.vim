@@ -122,7 +122,7 @@ function! blamer#GetMessage(file, line_number, line_count) abort
       return ''
     endif
 
-    " Echo unkown errors in order to catch them
+    " Echo unknown errors in order to catch them
     echo '[blamer.nvim] ' . l:result
     return ''
   endif
