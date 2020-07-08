@@ -92,7 +92,8 @@ function! s:GetLines() abort
 endfunction
 
 function! blamer#GetMessage(file, line_number, line_count) abort
-  let l:command = 'git --no-pager blame -p -L ' . a:line_number . ',' . a:line_count . ' -- ' . a:file
+  let l:file_path_escaped = shellescape(a:file)
+  let l:command = 'git --no-pager blame -p -L ' . a:line_number . ',' . a:line_count . ' -- ' . l:file_path_escaped
   let l:result = system(l:command)
 
   let l:lines = split(l:result, '\n')
@@ -121,7 +122,7 @@ function! blamer#GetMessage(file, line_number, line_count) abort
       return ''
     endif
 
-    " Echo unkown errors in order to catch them
+    " Echo unknown errors in order to catch them
     echo '[blamer.nvim] ' . l:result
     return ''
   endif
