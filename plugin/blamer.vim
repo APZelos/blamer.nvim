@@ -8,18 +8,28 @@ set cpo&vim
 
 let g:blamer_enabled = get(g:, 'blamer_enabled', 0)
 
+function! BlamerShow() abort
+  call blamer#Enable()
+  call blamer#Show()
+endfunction
+
+function! BlamerHide() abort
+  call blamer#Disable()
+  call blamer#Hide()
+endfunction
+
 function! BlamerToggle() abort
   if g:blamer_enabled == 0
-    call blamer#Enable()
-    call blamer#Show()
+    call BlamerShow()
   else
-    call blamer#Disable()
-    call blamer#Hide()
+    call BlamerHide()
   endif
 endfunction
 
 call blamer#Init()
 
+:command! -nargs=0 BlamerShow call BlamerShow()
+:command! -nargs=0 BlamerHide call BlamerHide()
 :command! -nargs=0 BlamerToggle call BlamerToggle()
 
 highlight default link Blamer Comment
