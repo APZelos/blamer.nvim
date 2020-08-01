@@ -30,7 +30,7 @@ Enables blamer on (neo)vim startup.
 
 You can toggle blamer on/off with the `:BlamerToggle` command.
 
-If the current directory is not a git repository the blamer will be automatically disabled.
+If the current file is not belong to a git repository, the blamer will be temporarily disabled, util next time enter a buffer which in a git repository.
 
 Default: `0`
 

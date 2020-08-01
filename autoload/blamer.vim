@@ -25,7 +25,6 @@ let s:blamer_timer_id = -1
 let s:blamer_relative_time = get(g:, 'blamer_relative_time', 0)
 
 let s:is_windows = has('win16') || has('win32') || has('win64') || has('win95')
-let s:missing_popup_feature = !has('nvim') && !exists('*popup_create')
 
 function! s:GetRelativeTime(commit_timestamp) abort
   let l:current_timestamp = localtime()
@@ -93,7 +92,7 @@ endfunction
 
 function! blamer#GetMessage(file, line_number, line_count) abort
   let l:file_path_escaped = shellescape(a:file)
-  let l:command = 'git --no-pager blame -p -L ' . a:line_number . ',' . a:line_count . ' -- ' . l:file_path_escaped
+  let l:command = 'git -C ' . s:git_root . ' --no-pager blame -p -L ' . a:line_number . ',' . a:line_count . ' -- ' . l:file_path_escaped
   let l:result = system(l:command)
 
   let l:lines = split(l:result, '\n')
@@ -197,7 +196,7 @@ function! blamer#CreatePopup(buffer_number, line_number, message) abort
 endfunction
 
 function! blamer#Show() abort
-  if g:blamer_enabled == 0 || s:missing_popup_feature
+  if g:blamer_enabled == 0
     return
   endif
 
@@ -206,20 +205,17 @@ function! blamer#Show() abort
     return
   endif
 
-  let l:file_path = s:substitute_path_separator(expand('%:p'))
-  if s:IsFileInPath(l:file_path, s:git_root) == 0
+  let l:buffer_number = bufnr('')
+  let l:line_numbers = s:GetLines()
+
+  let l:is_in_visual_mode = len(l:line_numbers) > 1
+  if l:is_in_visual_mode == 1 && s:blamer_show_in_visual_modes == 0
     return
   endif
 
-  let l:buffer_number = bufnr('')
-	let l:line_numbers = s:GetLines()
+  let l:file_path = s:substitute_path_separator(expand('%:p'))
 
-	let l:is_in_visual_mode = len(l:line_numbers) > 1
-	if l:is_in_visual_mode == 1 && s:blamer_show_in_visual_modes == 0
-	  return
-	endif
-
-	for line_number in l:line_numbers
+  for line_number in l:line_numbers
     let l:message = blamer#GetMessage(l:file_path, line_number, '+1')
     if has('nvim')
       call blamer#SetVirtualText(l:buffer_number, line_number, l:message)
@@ -259,6 +255,14 @@ function! blamer#Enable() abort
     return
   endif
 
+  let l:missing_popup_feature = !has('nvim') && !exists('*popup_create')
+  if l:missing_popup_feature
+    echohl ErrorMsg
+    echomsg '[blamer.nvim] Needs popup feature.'
+    echohl None
+    return
+  endif
+
   let g:blamer_enabled = 1
   call blamer#Init()
 endfunction
@@ -269,9 +273,33 @@ function! blamer#Disable() abort
   endif
 
   let g:blamer_enabled = 0
-  autocmd! blamer
+
+  autocmd! blamer_buffer_enter
+  autocmd! blamer_refresh
+
   call timer_stop(s:blamer_timer_id)
   let s:blamer_timer_id = -1
+endfunction
+
+function! blamer#OnBufEnter() abort
+  let l:file_path = s:substitute_path_separator(expand('%:h'))
+
+  if s:is_windows
+    let l:result = split(system('git -C ' . l:file_path . ' rev-parse --show-toplevel 2>NUL'), '\n')
+  else
+    let l:result = split(system('git -C ' . l:file_path . ' rev-parse --show-toplevel 2>/dev/null'), '\n')
+  endif
+  let s:git_root = s:Head(l:result)
+
+  if s:git_root != ''
+    augroup blamer_refresh
+      autocmd!
+      autocmd BufWritePost,CursorMoved * :call blamer#Refresh()
+    augroup END
+    call blamer#Show()
+  else
+    autocmd! blamer_refresh
+  endif
 endfunction
 
 function! blamer#Init() abort
@@ -279,31 +307,16 @@ function! blamer#Init() abort
     return
   endif
 
-  if s:missing_popup_feature
-    echohl ErrorMsg
-    echomsg '[blamer.nvim] Needs popup feature.'
-    echohl None
-    return
-  endif
-
-  if s:is_windows
-    let l:result = split(system('git rev-parse --show-toplevel 2>NUL'), '\n')
-  else
-    let l:result = split(system('git rev-parse --show-toplevel 2>/dev/null'), '\n')
-  endif
-  let s:git_root = s:Head(l:result)
-
-  if s:git_root == ''
-    let g:blamer_enabled = 0
-    return
-  endif
-
   let s:blamer_user_name = s:Head(split(system('git config --get user.name'), '\n'))
   let s:blamer_user_email = s:Head(split(system('git config --get user.email'), '\n'))
 
-  augroup blamer
+  augroup blamer_refresh
     autocmd!
-    autocmd BufEnter,BufWritePost,CursorMoved * :call blamer#Refresh()
+    autocmd BufWritePost,CursorMoved * :call blamer#Refresh()
+  augroup END
+  augroup blamer_buffer_enter
+    autocmd!
+    autocmd BufEnter * :call blamer#OnBufEnter()
   augroup END
 endfunction
 
