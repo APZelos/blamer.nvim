@@ -196,7 +196,7 @@ function! blamer#CreatePopup(buffer_number, line_number, message) abort
 endfunction
 
 function! blamer#Show() abort
-  if g:blamer_enabled == 0
+  if g:blamer_enabled == 0 || s:git_root == ''
     return
   endif
 
@@ -255,14 +255,6 @@ function! blamer#Enable() abort
     return
   endif
 
-  let l:missing_popup_feature = !has('nvim') && !exists('*popup_create')
-  if l:missing_popup_feature
-    echohl ErrorMsg
-    echomsg '[blamer.nvim] Needs popup feature.'
-    echohl None
-    return
-  endif
-
   let g:blamer_enabled = 1
   call blamer#Init()
 endfunction
@@ -274,14 +266,14 @@ function! blamer#Disable() abort
 
   let g:blamer_enabled = 0
 
-  autocmd! blamer_buffer_enter
+  autocmd! blamer_buffer
   autocmd! blamer_refresh
 
   call timer_stop(s:blamer_timer_id)
   let s:blamer_timer_id = -1
 endfunction
 
-function! blamer#OnBufEnter() abort
+function! blamer#CheckGitRepoExist() abort
   let l:file_path = s:substitute_path_separator(expand('%:h'))
 
   if s:is_windows
@@ -291,7 +283,18 @@ function! blamer#OnBufEnter() abort
   endif
   let s:git_root = s:Head(l:result)
 
-  if s:git_root != ''
+  return s:git_root == '' ? 0 : 1
+endfunction
+
+function! blamer#OnBufEnter() abort
+  let l:is_buffer_special = &buftype != '' ? 1 : 0
+  if is_buffer_special
+    autocmd! blamer_refresh
+    call timer_stop(s:blamer_timer_id)
+    return
+  endif
+
+  if blamer#CheckGitRepoExist() == 1
     augroup blamer_refresh
       autocmd!
       autocmd BufWritePost,CursorMoved * :call blamer#Refresh()
@@ -299,11 +302,21 @@ function! blamer#OnBufEnter() abort
     call blamer#Show()
   else
     autocmd! blamer_refresh
+    call timer_stop(s:blamer_timer_id)
   endif
 endfunction
 
 function! blamer#Init() abort
   if g:blamer_enabled == 0
+    return
+  endif
+
+  let l:missing_popup_feature = !has('nvim') && !exists('*popup_create')
+  if l:missing_popup_feature
+    let g:blamer_enabled = 0
+    echohl ErrorMsg
+    echomsg '[blamer.nvim] Needs popup feature.'
+    echohl None
     return
   endif
 
@@ -314,10 +327,15 @@ function! blamer#Init() abort
     autocmd!
     autocmd BufWritePost,CursorMoved * :call blamer#Refresh()
   augroup END
-  augroup blamer_buffer_enter
+  augroup blamer_buffer
     autocmd!
-    autocmd BufEnter * :call blamer#OnBufEnter()
+    autocmd BufReadPost * :call blamer#OnBufEnter()
+    autocmd BufLeave * :call blamer#Hide()
   augroup END
+
+  if blamer#CheckGitRepoExist() == 0
+    autocmd! blamer_refresh
+  endif
 endfunction
 
 " from neomru
