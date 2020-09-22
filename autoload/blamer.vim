@@ -21,6 +21,7 @@ if exists('*prop_type_add')
 endif
 let s:blamer_delay = get(g:, 'blamer_delay', 1000)
 let s:blamer_show_in_visual_modes = get(g:, 'blamer_show_in_visual_modes', 1)
+let s:blamer_show_in_insert_modes = get(g:, 'blamer_show_in_insert_modes', 1)
 let s:blamer_timer_id = -1
 let s:blamer_relative_time = get(g:, 'blamer_relative_time', 0)
 
@@ -218,6 +219,10 @@ function! blamer#Show() abort
 	if l:is_in_visual_mode == 1 && s:blamer_show_in_visual_modes == 0
 	  return
 	endif
+
+	if mode() == 'i' && s:blamer_show_in_insert_modes == 0
+      return
+    endif
 
 	for line_number in l:line_numbers
     let l:message = blamer#GetMessage(l:file_path, line_number, '+1')
