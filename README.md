@@ -58,6 +58,16 @@ Default: `1`
 let g:blamer_show_in_visual_modes = 0
 ```
 
+#### Show in insert modes
+
+Enables / disables blamer in insert modes.
+
+Default: `1`
+
+```
+let g:blamer_show_in_insert_modes = 0
+```
+
 #### Prefix
 
 The prefix that will be added to the template.
