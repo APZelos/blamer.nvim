@@ -2,6 +2,8 @@ if exists('g:blamer_loaded')
   finish
 endif
 let g:blamer_loaded = 1
+let g:blamer_is_initialized = 0
+let g:blamer_show_on_insert_leave = 0
 
 let s:save_cpo = &cpo
 set cpo&vim

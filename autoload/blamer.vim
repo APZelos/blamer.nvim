@@ -220,9 +220,9 @@ function! blamer#Show() abort
 	  return
 	endif
 
-	if mode() == 'i' && s:blamer_show_in_insert_modes == 0
-      return
-    endif
+	" if mode() == 'i' && s:blamer_show_in_insert_modes == 0
+    " return
+  " endif
 
 	for line_number in l:line_numbers
     let l:message = blamer#GetMessage(l:file_path, line_number, '+1')
@@ -274,15 +274,39 @@ function! blamer#Disable() abort
   endif
 
   let g:blamer_enabled = 0
-  autocmd! blamer
   call timer_stop(s:blamer_timer_id)
   let s:blamer_timer_id = -1
+endfunction
+
+function! blamer#EnableOnInsertLeave() abort
+  if g:blamer_show_on_insert_leave == 0
+    return
+  endif
+
+  let g:blamer_show_on_insert_leave = 0
+  call blamer#Enable()
+  call blamer#Show()
+endfunction
+
+function! blamer#DisableOnInsertEnter() abort
+  if g:blamer_enabled == 0
+    return
+  endif
+
+  let g:blamer_show_on_insert_leave = 1
+  call blamer#Disable()
+  call blamer#Hide()
 endfunction
 
 function! blamer#Init() abort
   if g:blamer_enabled == 0
     return
   endif
+
+  if g:blamer_is_initialized == 1
+    return
+  endif
+  let g:blamer_is_initialized = 1
 
   if s:missing_popup_feature
     echohl ErrorMsg
@@ -309,6 +333,10 @@ function! blamer#Init() abort
   augroup blamer
     autocmd!
     autocmd BufEnter,BufWritePost,CursorMoved * :call blamer#Refresh()
+    if s:blamer_show_in_insert_modes == 0
+      autocmd InsertEnter * :call blamer#DisableOnInsertEnter()
+      autocmd InsertLeave * :call blamer#EnableOnInsertLeave()
+    endif
   augroup END
 endfunction
 
