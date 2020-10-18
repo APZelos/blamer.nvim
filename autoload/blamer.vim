@@ -196,12 +196,13 @@ function! blamer#CreatePopup(buffer_number, line_number, message) abort
 endfunction
 
 function! blamer#Show() abort
-  if g:blamer_enabled == 0 || s:git_root == ''
+  if g:blamer_enabled == 0
     return
   endif
 
-  let l:is_buffer_special = &buftype != '' ? 1 : 0
-  if is_buffer_special
+  if &buftype != '' | return | endif    " don't handle special buffer
+
+  if s:git_root == ''
     return
   endif
 
@@ -244,6 +245,7 @@ function! blamer#Refresh() abort
   if g:blamer_enabled == 0
     return
   endif
+  if &buftype != '' | return | endif    " don't handle special buffer
 
   call timer_stop(s:blamer_timer_id)
   call blamer#Hide()
@@ -274,14 +276,7 @@ function! blamer#Disable() abort
 endfunction
 
 function! blamer#CheckGitRepoExist() abort
-  let l:file_path = s:substitute_path_separator(expand('%:h'))
-
-  if s:is_windows
-    let l:result = split(system('git -C ' . l:file_path . ' rev-parse --show-toplevel 2>NUL'), '\n')
-  else
-    let l:result = split(system('git -C ' . l:file_path . ' rev-parse --show-toplevel 2>/dev/null'), '\n')
-  endif
-  let s:git_root = s:Head(l:result)
+  let s:git_root = finddir('.git/..', expand('%:p:h').';')
 
   return s:git_root == '' ? 0 : 1
 endfunction
