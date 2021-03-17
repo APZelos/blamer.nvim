@@ -92,12 +92,46 @@ function! s:GetLines() abort
   endif
 endfunction
 
-function! blamer#GetMessage(file, line_number, line_count) abort
-  let l:file_path_escaped = shellescape(a:file)
-  let l:command = 'git --no-pager blame -p -L ' . a:line_number . ',' . a:line_count . ' -- ' . l:file_path_escaped
-  let l:result = system(l:command)
+function! blamer#CommitDataToMessage(commit_data) abort
+  let l:message = s:blamer_template
+  for field in s:blamer_info_fields
+    let l:message = substitute(l:message, '\m\C<' . field . '>', a:commit_data[field], 'g')
+  endfor
+  return l:message
+endfunction
 
+function! blamer#ParseCommitDataLine(line) abort
+  let l:info = {}
+  let l:words = split(a:line, ' ')
+  let l:property = l:words[0]
+  let l:value = join(l:words[1:], ' ')
+  if  l:property =~? 'time'
+    if(s:blamer_relative_time)
+      let l:value = s:GetRelativeTime(l:value)
+    else
+      let l:value = strftime(s:blamer_date_format, l:value)
+    endif
+  endif
+  let l:value = escape(l:value, '&')
+  let l:value = escape(l:value, '~')
+
+  if l:value ==? s:blamer_user_name
+    let l:value = 'You'
+  elseif l:value ==? s:blamer_user_email
+    let l:value = 'You'
+  endif
+
+  let l:info[l:property] = l:value
+  return l:info
+endfunction
+
+function! blamer#GetMessages(file, line_number, line_count) abort
+  let l:end_line = a:line_number + a:line_count - 1
+  let l:file_path_escaped = shellescape(a:file)
+  let l:command = 'git --no-pager blame --line-porcelain -L ' . a:line_number . ',' . l:end_line . ' -- ' . l:file_path_escaped
+  let l:result = system(l:command)
   let l:lines = split(l:result, '\n')
+
   let l:info = {}
   let l:info['commit-short'] = split(l:lines[0], ' ')[0][:7]
   let l:info['commit-long'] = split(l:lines[0], ' ')[0]
@@ -128,41 +162,37 @@ function! blamer#GetMessage(file, line_number, line_count) abort
     return ''
   endif
 
-  for line in l:lines[1:]
-    let l:words = split(line, ' ')
-    let l:property = l:words[0]
-    let l:value = join(l:words[1:], ' ')
-    if  l:property =~? 'time'
-      if(s:blamer_relative_time)
-        let l:value = s:GetRelativeTime(l:value)
-      else
-        let l:value = strftime(s:blamer_date_format, l:value)
+  let l:TAB_ASCII = 9
+
+  let l:reading_commit_data = 0
+  let l:commit_data = {}
+  let l:commit_data_per_line = []
+
+  for line in l:lines[0:]
+    let l:line_words = split(line, ' ')
+    let l:is_line_hash = !empty(matchstr(l:line_words[0],'\c[0-9a-f]\{40}'))
+    let l:has_line_tab = char2nr(l:line_words[0][0]) == l:TAB_ASCII
+
+    if l:is_line_hash
+      " line type HASH
+      let l:commit_data = {}
+    elseif l:has_line_tab
+      " line type TAB
+      " Change messsage when changes are not commited
+      if l:commit_data.author ==? "Not Committed Yet"
+        let l:commit_data.author = 'You'
+        let l:commit_data.committer = 'You'
+        let l:commit_data.summary = 'Uncommitted changes'
       endif
+      let l:commit_data_per_line = add(l:commit_data_per_line,extend({},l:commit_data))
+    else
+      " line type COMMIT DATA
+      let l:commit_data_chunk = blamer#ParseCommitDataLine(line)
+      let l:commit_data = extend(l:commit_data,l:commit_data_chunk)
     endif
-    let l:value = escape(l:value, '&')
-    let l:value = escape(l:value, '~')
-
-    if l:value ==? s:blamer_user_name
-      let l:value = 'You'
-    elseif l:value ==? s:blamer_user_email
-      let l:value = 'You'
-    endif
-
-    let l:info[l:property] = l:value
   endfor
 
-  if l:result =~? 'Not committed yet'
-    let l:info.author = 'You'
-    let l:info.committer = 'You'
-    let l:info.summary = 'Uncommitted changes'
-  endif
-
-  let l:message = s:blamer_template
-  for field in s:blamer_info_fields
-    let l:message = substitute(l:message, '\m\C<' . field . '>', l:info[field], 'g')
-  endfor
-
-  return l:message
+  return map(l:commit_data_per_line,"blamer#CommitDataToMessage(v:val)")
 endfunction
 
 function! blamer#SetVirtualText(buffer_number, line_number, message) abort
@@ -224,13 +254,18 @@ function! blamer#Show() abort
     " return
   " endif
 
+  let l:line_count = len(l:line_numbers)
+  let l:messages = blamer#GetMessages(l:file_path, l:line_numbers[0], l:line_count)
+  let l:index = 0
+
 	for line_number in l:line_numbers
-    let l:message = blamer#GetMessage(l:file_path, line_number, '+1')
+    let l:message = l:messages[l:index]
     if has('nvim')
       call blamer#SetVirtualText(l:buffer_number, line_number, l:message)
     else
       call blamer#CreatePopup(l:buffer_number, line_number, l:message)
     endif
+    let l:index += 1
   endfor
 endfunction
 
