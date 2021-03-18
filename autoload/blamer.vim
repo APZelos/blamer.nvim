@@ -6,7 +6,6 @@ let g:blamer_autoloaded = 1
 let s:save_cpo = &cpo
 set cpo&vim
 
-let s:git_root = ''
 let s:blamer_prefix = get(g:, 'blamer_prefix', '   ')
 let s:blamer_template = get(g:, 'blamer_template', '<author>, <author-time> • <summary>')
 let s:blamer_date_format = get(g:, 'blamer_date_format', '%d/%m/%y %H:%M')
@@ -126,9 +125,10 @@ function! blamer#ParseCommitDataLine(line) abort
 endfunction
 
 function! blamer#GetMessages(file, line_number, line_count) abort
+  let l:dir_path = shellescape(s:substitute_path_separator(expand('%:h')))
   let l:end_line = a:line_number + a:line_count - 1
   let l:file_path_escaped = shellescape(a:file)
-  let l:command = 'git --no-pager blame --line-porcelain -L ' . a:line_number . ',' . l:end_line . ' -- ' . l:file_path_escaped
+  let l:command = 'git -C ' . l:dir_path . ' --no-pager blame --line-porcelain -L ' . a:line_number . ',' . l:end_line . ' -- ' . l:file_path_escaped
   let l:result = system(l:command)
   let l:lines = split(l:result, '\n')
 
@@ -233,14 +233,17 @@ function! blamer#Show() abort
   endif
 
   let l:is_buffer_special = &buftype != '' ? 1 : 0
-  if is_buffer_special
+  if l:is_buffer_special
     return
   endif
 
   let l:file_path = s:substitute_path_separator(expand('%:p'))
-  if s:IsFileInPath(l:file_path, s:git_root) == 0
+
+  if empty(l:file_path) 
     return
   endif
+
+
 
   let l:buffer_number = bufnr('')
 	let l:line_numbers = s:GetLines()
@@ -347,18 +350,6 @@ function! blamer#Init() abort
     echohl ErrorMsg
     echomsg '[blamer.nvim] Needs popup feature.'
     echohl None
-    return
-  endif
-
-  if s:is_windows
-    let l:result = split(system('git rev-parse --show-toplevel 2>NUL'), '\n')
-  else
-    let l:result = split(system('git rev-parse --show-toplevel 2>/dev/null'), '\n')
-  endif
-  let s:git_root = s:Head(l:result)
-
-  if s:git_root == ''
-    let g:blamer_enabled = 0
     return
   endif
 
