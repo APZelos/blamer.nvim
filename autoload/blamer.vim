@@ -8,7 +8,7 @@ set cpo&vim
 
 let s:git_root = ''
 let s:blamer_prefix = get(g:, 'blamer_prefix', '   ')
-let s:blamer_template = get(g:, 'blamer_template', '<committer>, <committer-time> • <summary>')
+let s:blamer_template = get(g:, 'blamer_template', '<author>, <author-time> • <summary>')
 let s:blamer_date_format = get(g:, 'blamer_date_format', '%d/%m/%y %H:%M')
 let s:blamer_user_name = ''
 let s:blamer_user_email = ''
