@@ -287,6 +287,20 @@ function! blamer#Hide() abort
   endif
 endfunction
 
+function! blamer#UpdateGitUserConfig() abort
+  let l:dir_path = shellescape(s:substitute_path_separator(expand('%:h')))
+  let s:blamer_user_name = s:Head(split(system('git -C ' . l:dir_path . ' config --get user.name'), '\n'))
+  let s:blamer_user_email = s:Head(split(system('git -C ' . l:dir_path . ' config --get user.email'), '\n'))
+endfunction
+
+function! blamer#BufferEnter() abort
+  if g:blamer_enabled == 0
+    return
+  endif
+
+  call blamer#UpdateGitUserConfig()
+endfunction
+
 function! blamer#Refresh() abort
   if g:blamer_enabled == 0
     return
@@ -353,11 +367,9 @@ function! blamer#Init() abort
     return
   endif
 
-  let s:blamer_user_name = s:Head(split(system('git config --get user.name'), '\n'))
-  let s:blamer_user_email = s:Head(split(system('git config --get user.email'), '\n'))
-
   augroup blamer
     autocmd!
+    autocmd BufEnter * :call blamer#BufferEnter()
     autocmd BufEnter,BufWritePost,CursorMoved * :call blamer#Refresh()
     if s:blamer_show_in_insert_modes == 0
       autocmd InsertEnter * :call blamer#DisableOnInsertEnter()
