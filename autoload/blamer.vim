@@ -175,7 +175,10 @@ function! blamer#GetMessages(file, line_number, line_count) abort
 
     if l:is_line_hash
       " line type HASH
-      let l:commit_data = {}
+      let l:commit_data = {
+            \ 'commit-short': l:line_words[0][:7],
+            \ 'commit-long': l:line_words[0]
+            \ }
     elseif l:has_line_tab
       " line type TAB
       " Change messsage when changes are not commited
