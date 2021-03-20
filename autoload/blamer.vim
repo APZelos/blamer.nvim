@@ -1,10 +1,12 @@
+scriptencoding utf-8
+
 if exists('g:blamer_autoloaded')
   finish
 endif
 let g:blamer_autoloaded = 1
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
 let s:blamer_prefix = get(g:, 'blamer_prefix', '   ')
 let s:blamer_template = get(g:, 'blamer_template', '<author>, <author-time> • <summary>')
@@ -74,14 +76,6 @@ function! s:Head(array) abort
   return a:array[0]
 endfunction
 
-function! s:IsFileInPath(file_path, path) abort
-  if a:file_path =~? a:path
-    return 1
-  else
-    return 0
-  endif
-endfunction
-
 function! s:GetLines() abort
   let l:visual_line_number = line('v')
   let l:cursor_line_number = line('.')
@@ -136,10 +130,8 @@ function! blamer#GetMessages(file, line_number, line_count) abort
   let l:result = system(l:command)
   let l:lines = split(l:result, '\n')
 
-  let l:info = {}
-  let l:info['commit-short'] = split(l:lines[0], ' ')[0][:7]
-  let l:info['commit-long'] = split(l:lines[0], ' ')[0]
-  let l:hash_is_empty = empty(matchstr(info['commit-long'],'\c[0-9a-f]\{40}'))
+  let hash = split(l:lines[0], ' ')[0]
+  let l:hash_is_empty = empty(matchstr(hash,'\c[0-9a-f]\{40}'))
 
   if l:hash_is_empty
     if l:result =~? 'fatal' && l:result =~? 'not a git repository'
@@ -168,8 +160,6 @@ function! blamer#GetMessages(file, line_number, line_count) abort
   endif
 
   let l:TAB_ASCII = 9
-
-  let l:reading_commit_data = 0
   let l:commit_data = {}
   let l:commit_data_per_line = []
 
@@ -187,7 +177,7 @@ function! blamer#GetMessages(file, line_number, line_count) abort
     elseif l:has_line_tab
       " line type TAB
       " Change messsage when changes are not commited
-      if l:commit_data.author ==? "Not Committed Yet"
+      if l:commit_data.author ==? 'Not Committed Yet'
         let l:commit_data.author = 'You'
         let l:commit_data.committer = 'You'
         let l:commit_data.summary = 'Uncommitted changes'
@@ -200,7 +190,7 @@ function! blamer#GetMessages(file, line_number, line_count) abort
     endif
   endfor
 
-  return map(l:commit_data_per_line,"blamer#CommitDataToMessage(v:val)")
+  return map(l:commit_data_per_line,'blamer#CommitDataToMessage(v:val)')
 endfunction
 
 function! blamer#SetVirtualText(buffer_number, line_number, message) abort
@@ -224,7 +214,7 @@ function! blamer#CreatePopup(buffer_number, line_number, message) abort
   \ 'id': l:propid,
   \})
 
-  let l:popup_winid = popup_create(s:blamer_prefix . a:message, {
+  call popup_create(s:blamer_prefix . a:message, {
   \ 'textprop': 'blamer_popup_marker',
   \ 'textpropid': l:propid,
   \ 'line': -1,
@@ -240,7 +230,7 @@ function! blamer#Show() abort
     return
   endif
 
-  let l:is_buffer_special = &buftype != '' ? 1 : 0
+  let l:is_buffer_special = &buftype !=# '' ? 1 : 0
   if l:is_buffer_special
     return
   endif
@@ -406,5 +396,5 @@ function! s:substitute_path_separator(path) abort
   return s:is_windows ? substitute(a:path, '\\', '/', 'g') : a:path
 endfunction
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo
