@@ -27,6 +27,10 @@ let s:blamer_relative_time = get(g:, 'blamer_relative_time', 0)
 let s:is_windows = has('win16') || has('win32') || has('win64') || has('win95')
 let s:missing_popup_feature = !has('nvim') && !exists('*popup_create')
 
+let s:blamer_buffer_enabled = 0
+let s:blamer_show_enabled = 0
+
+
 function! s:GetRelativeTime(commit_timestamp) abort
   let l:current_timestamp = localtime()
   let l:elapsed = l:current_timestamp - a:commit_timestamp
@@ -139,7 +143,8 @@ function! blamer#GetMessages(file, line_number, line_count) abort
 
   if l:hash_is_empty
     if l:result =~? 'fatal' && l:result =~? 'not a git repository'
-      let g:blamer_enabled = 0
+      " Not a git repository
+      let g:blamer_buffer_enabled = 0
       echo '[blamer.nvim] Not a git repository'
       return ''
     endif
@@ -246,8 +251,6 @@ function! blamer#Show() abort
     return
   endif
 
-
-
   let l:buffer_number = bufnr('')
 	let l:line_numbers = s:GetLines()
 
@@ -255,10 +258,6 @@ function! blamer#Show() abort
 	if l:is_in_visual_mode == 1 && s:blamer_show_in_visual_modes == 0
 	  return
 	endif
-
-	" if mode() == 'i' && s:blamer_show_in_insert_modes == 0
-    " return
-  " endif
 
   let l:line_count = len(l:line_numbers)
   let l:messages = blamer#GetMessages(l:file_path, l:line_numbers[0], l:line_count)
@@ -296,16 +295,47 @@ function! blamer#UpdateGitUserConfig() abort
   let s:blamer_user_email = s:Head(split(system('git -C ' . l:dir_path . ' config --get user.email'), '\n'))
 endfunction
 
+
+function! blamer#IsBufferGitTracked() abort
+  let l:file_path = shellescape(s:substitute_path_separator(expand('%:p')))
+  if empty(l:file_path) 
+    return 0
+  endif
+
+  let l:dir_path = shellescape(s:substitute_path_separator(expand('%:h')))
+  let l:result = system('git -C ' . l:dir_path . ' ls-files --error-unmatch ' . l:file_path)
+  if l:result[0:4] ==# 'fatal'
+    return 0
+  endif
+
+  return 1
+endfunction
+
 function! blamer#BufferEnter() abort
   if g:blamer_enabled == 0
     return
   endif
 
-  call blamer#UpdateGitUserConfig()
+  let l:is_tracked = blamer#IsBufferGitTracked()
+  if l:is_tracked
+    let s:blamer_buffer_enabled = 1
+    call blamer#UpdateGitUserConfig()
+    call blamer#EnableShow()
+  else
+    let s:blamer_buffer_enabled = 0
+  endif
+endfunction
+
+function! blamer#BufferLeave() abort
+  if g:blamer_enabled == 0
+    return
+  endif
+
+  call blamer#DisableShow()
 endfunction
 
 function! blamer#Refresh() abort
-  if g:blamer_enabled == 0
+  if g:blamer_enabled == 0 || s:blamer_buffer_enabled == 0 || s:blamer_show_enabled == 0
     return
   endif
 
@@ -315,41 +345,30 @@ function! blamer#Refresh() abort
 endfunction
 
 function! blamer#Enable() abort
-  if g:blamer_enabled == 1
-    return
-  endif
-
   let g:blamer_enabled = 1
-  call blamer#Init()
 endfunction
 
 function! blamer#Disable() abort
-  if g:blamer_enabled == 0
-    return
-  endif
-
   let g:blamer_enabled = 0
-  call timer_stop(s:blamer_timer_id)
-  let s:blamer_timer_id = -1
 endfunction
 
-function! blamer#EnableOnInsertLeave() abort
-  if g:blamer_show_on_insert_leave == 0
+function! blamer#EnableShow() abort
+  if g:blamer_enabled == 0 || s:blamer_buffer_enabled == 0 || s:blamer_show_enabled == 1
     return
   endif
 
-  let g:blamer_show_on_insert_leave = 0
-  call blamer#Enable()
+  let s:blamer_show_enabled = 1
   call blamer#Show()
 endfunction
 
-function! blamer#DisableOnInsertEnter() abort
-  if g:blamer_enabled == 0
+function! blamer#DisableShow() abort
+  if g:blamer_enabled == 0 || s:blamer_buffer_enabled == 0 || s:blamer_show_enabled == 0
     return
   endif
 
-  let g:blamer_show_on_insert_leave = 1
-  call blamer#Disable()
+  let s:blamer_show_enabled = 0
+  call timer_stop(s:blamer_timer_id)
+  let s:blamer_timer_id = -1
   call blamer#Hide()
 endfunction
 
@@ -373,10 +392,11 @@ function! blamer#Init() abort
   augroup blamer
     autocmd!
     autocmd BufEnter * :call blamer#BufferEnter()
+    autocmd BufLeave * :call blamer#BufferLeave()
     autocmd BufEnter,BufWritePost,CursorMoved * :call blamer#Refresh()
     if s:blamer_show_in_insert_modes == 0
-      autocmd InsertEnter * :call blamer#DisableOnInsertEnter()
-      autocmd InsertLeave * :call blamer#EnableOnInsertLeave()
+      autocmd InsertEnter * :call blamer#DisableShow()
+      autocmd InsertLeave * :call blamer#EnableShow()
     endif
   augroup END
 endfunction
