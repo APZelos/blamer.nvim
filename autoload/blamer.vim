@@ -1,12 +1,13 @@
+scriptencoding utf-8
+
 if exists('g:blamer_autoloaded')
   finish
 endif
 let g:blamer_autoloaded = 1
 
-let s:save_cpo = &cpo
-set cpo&vim
+let s:save_cpo = &cpoptions
+set cpoptions&vim
 
-let s:git_root = ''
 let s:blamer_prefix = get(g:, 'blamer_prefix', '   ')
 let s:blamer_template = get(g:, 'blamer_template', '<author>, <author-time> • <summary>')
 let s:blamer_date_format = get(g:, 'blamer_date_format', '%d/%m/%y %H:%M')
@@ -27,6 +28,10 @@ let s:blamer_relative_time = get(g:, 'blamer_relative_time', 0)
 
 let s:is_windows = has('win16') || has('win32') || has('win64') || has('win95')
 let s:missing_popup_feature = !has('nvim') && !exists('*popup_create')
+
+let s:blamer_buffer_enabled = 0
+let s:blamer_show_enabled = 0
+
 
 function! s:GetRelativeTime(commit_timestamp) abort
   let l:current_timestamp = localtime()
@@ -69,14 +74,6 @@ function! s:Head(array) abort
   endif
 
   return a:array[0]
-endfunction
-
-function! s:IsFileInPath(file_path, path) abort
-  if a:file_path =~? a:path
-    return 1
-  else
-    return 0
-  endif
 endfunction
 
 function! s:GetLines() abort
@@ -126,20 +123,20 @@ function! blamer#ParseCommitDataLine(line) abort
 endfunction
 
 function! blamer#GetMessages(file, line_number, line_count) abort
+  let l:dir_path = shellescape(s:substitute_path_separator(expand('%:h')))
   let l:end_line = a:line_number + a:line_count - 1
   let l:file_path_escaped = shellescape(a:file)
-  let l:command = 'git --no-pager blame --line-porcelain -L ' . a:line_number . ',' . l:end_line . ' -- ' . l:file_path_escaped
+  let l:command = 'git -C ' . l:dir_path . ' --no-pager blame --line-porcelain -L ' . a:line_number . ',' . l:end_line . ' -- ' . l:file_path_escaped
   let l:result = system(l:command)
   let l:lines = split(l:result, '\n')
 
-  let l:info = {}
-  let l:info['commit-short'] = split(l:lines[0], ' ')[0][:7]
-  let l:info['commit-long'] = split(l:lines[0], ' ')[0]
-  let l:hash_is_empty = empty(matchstr(info['commit-long'],'\c[0-9a-f]\{40}'))
+  let hash = split(l:lines[0], ' ')[0]
+  let l:hash_is_empty = empty(matchstr(hash,'\c[0-9a-f]\{40}'))
 
   if l:hash_is_empty
     if l:result =~? 'fatal' && l:result =~? 'not a git repository'
-      let g:blamer_enabled = 0
+      " Not a git repository
+      let g:blamer_buffer_enabled = 0
       echo '[blamer.nvim] Not a git repository'
       return ''
     endif
@@ -163,8 +160,6 @@ function! blamer#GetMessages(file, line_number, line_count) abort
   endif
 
   let l:TAB_ASCII = 9
-
-  let l:reading_commit_data = 0
   let l:commit_data = {}
   let l:commit_data_per_line = []
 
@@ -182,7 +177,7 @@ function! blamer#GetMessages(file, line_number, line_count) abort
     elseif l:has_line_tab
       " line type TAB
       " Change messsage when changes are not commited
-      if l:commit_data.author ==? "Not Committed Yet"
+      if l:commit_data.author ==? 'Not Committed Yet'
         let l:commit_data.author = 'You'
         let l:commit_data.committer = 'You'
         let l:commit_data.summary = 'Uncommitted changes'
@@ -195,7 +190,7 @@ function! blamer#GetMessages(file, line_number, line_count) abort
     endif
   endfor
 
-  return map(l:commit_data_per_line,"blamer#CommitDataToMessage(v:val)")
+  return map(l:commit_data_per_line,'blamer#CommitDataToMessage(v:val)')
 endfunction
 
 function! blamer#SetVirtualText(buffer_number, line_number, message) abort
@@ -219,7 +214,7 @@ function! blamer#CreatePopup(buffer_number, line_number, message) abort
   \ 'id': l:propid,
   \})
 
-  let l:popup_winid = popup_create(s:blamer_prefix . a:message, {
+  call popup_create(s:blamer_prefix . a:message, {
   \ 'textprop': 'blamer_popup_marker',
   \ 'textpropid': l:propid,
   \ 'line': -1,
@@ -235,13 +230,14 @@ function! blamer#Show() abort
     return
   endif
 
-  let l:is_buffer_special = &buftype != '' ? 1 : 0
-  if is_buffer_special
+  let l:is_buffer_special = &buftype !=# '' ? 1 : 0
+  if l:is_buffer_special
     return
   endif
 
   let l:file_path = s:substitute_path_separator(expand('%:p'))
-  if s:IsFileInPath(l:file_path, s:git_root) == 0
+
+  if empty(l:file_path) 
     return
   endif
 
@@ -252,10 +248,6 @@ function! blamer#Show() abort
 	if l:is_in_visual_mode == 1 && s:blamer_show_in_visual_modes == 0
 	  return
 	endif
-
-	" if mode() == 'i' && s:blamer_show_in_insert_modes == 0
-    " return
-  " endif
 
   let l:line_count = len(l:line_numbers)
   let l:messages = blamer#GetMessages(l:file_path, l:line_numbers[0], l:line_count)
@@ -287,8 +279,53 @@ function! blamer#Hide() abort
   endif
 endfunction
 
-function! blamer#Refresh() abort
+function! blamer#UpdateGitUserConfig() abort
+  let l:dir_path = shellescape(s:substitute_path_separator(expand('%:h')))
+  let s:blamer_user_name = s:Head(split(system('git -C ' . l:dir_path . ' config --get user.name'), '\n'))
+  let s:blamer_user_email = s:Head(split(system('git -C ' . l:dir_path . ' config --get user.email'), '\n'))
+endfunction
+
+
+function! blamer#IsBufferGitTracked() abort
+  let l:file_path = shellescape(s:substitute_path_separator(expand('%:p')))
+  if empty(l:file_path) 
+    return 0
+  endif
+
+  let l:dir_path = shellescape(s:substitute_path_separator(expand('%:h')))
+  let l:result = system('git -C ' . l:dir_path . ' ls-files --error-unmatch ' . l:file_path)
+  if l:result[0:4] ==# 'fatal'
+    return 0
+  endif
+
+  return 1
+endfunction
+
+function! blamer#BufferEnter() abort
   if g:blamer_enabled == 0
+    return
+  endif
+
+  let l:is_tracked = blamer#IsBufferGitTracked()
+  if l:is_tracked
+    let s:blamer_buffer_enabled = 1
+    call blamer#UpdateGitUserConfig()
+    call blamer#EnableShow()
+  else
+    let s:blamer_buffer_enabled = 0
+  endif
+endfunction
+
+function! blamer#BufferLeave() abort
+  if g:blamer_enabled == 0
+    return
+  endif
+
+  call blamer#DisableShow()
+endfunction
+
+function! blamer#Refresh() abort
+  if g:blamer_enabled == 0 || s:blamer_buffer_enabled == 0 || s:blamer_show_enabled == 0
     return
   endif
 
@@ -298,41 +335,30 @@ function! blamer#Refresh() abort
 endfunction
 
 function! blamer#Enable() abort
-  if g:blamer_enabled == 1
-    return
-  endif
-
   let g:blamer_enabled = 1
-  call blamer#Init()
 endfunction
 
 function! blamer#Disable() abort
-  if g:blamer_enabled == 0
-    return
-  endif
-
   let g:blamer_enabled = 0
-  call timer_stop(s:blamer_timer_id)
-  let s:blamer_timer_id = -1
 endfunction
 
-function! blamer#EnableOnInsertLeave() abort
-  if g:blamer_show_on_insert_leave == 0
+function! blamer#EnableShow() abort
+  if g:blamer_enabled == 0 || s:blamer_buffer_enabled == 0 || s:blamer_show_enabled == 1
     return
   endif
 
-  let g:blamer_show_on_insert_leave = 0
-  call blamer#Enable()
+  let s:blamer_show_enabled = 1
   call blamer#Show()
 endfunction
 
-function! blamer#DisableOnInsertEnter() abort
-  if g:blamer_enabled == 0
+function! blamer#DisableShow() abort
+  if g:blamer_enabled == 0 || s:blamer_buffer_enabled == 0 || s:blamer_show_enabled == 0
     return
   endif
 
-  let g:blamer_show_on_insert_leave = 1
-  call blamer#Disable()
+  let s:blamer_show_enabled = 0
+  call timer_stop(s:blamer_timer_id)
+  let s:blamer_timer_id = -1
   call blamer#Hide()
 endfunction
 
@@ -353,27 +379,14 @@ function! blamer#Init() abort
     return
   endif
 
-  if s:is_windows
-    let l:result = split(system('git rev-parse --show-toplevel 2>NUL'), '\n')
-  else
-    let l:result = split(system('git rev-parse --show-toplevel 2>/dev/null'), '\n')
-  endif
-  let s:git_root = s:Head(l:result)
-
-  if s:git_root == ''
-    let g:blamer_enabled = 0
-    return
-  endif
-
-  let s:blamer_user_name = s:Head(split(system('git config --get user.name'), '\n'))
-  let s:blamer_user_email = s:Head(split(system('git config --get user.email'), '\n'))
-
   augroup blamer
     autocmd!
+    autocmd BufEnter * :call blamer#BufferEnter()
+    autocmd BufLeave * :call blamer#BufferLeave()
     autocmd BufEnter,BufWritePost,CursorMoved * :call blamer#Refresh()
     if s:blamer_show_in_insert_modes == 0
-      autocmd InsertEnter * :call blamer#DisableOnInsertEnter()
-      autocmd InsertLeave * :call blamer#EnableOnInsertLeave()
+      autocmd InsertEnter * :call blamer#DisableShow()
+      autocmd InsertLeave * :call blamer#EnableShow()
     endif
   augroup END
 endfunction
@@ -383,5 +396,5 @@ function! s:substitute_path_separator(path) abort
   return s:is_windows ? substitute(a:path, '\\', '/', 'g') : a:path
 endfunction
 
-let &cpo = s:save_cpo
+let &cpoptions = s:save_cpo
 unlet s:save_cpo

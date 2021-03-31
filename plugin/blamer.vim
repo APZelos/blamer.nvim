@@ -12,12 +12,12 @@ let g:blamer_enabled = get(g:, 'blamer_enabled', 0)
 
 function! BlamerShow() abort
   call blamer#Enable()
-  call blamer#Show()
+  call blamer#EnableShow()
 endfunction
 
 function! BlamerHide() abort
+  call blamer#DisableShow()
   call blamer#Disable()
-  call blamer#Hide()
 endfunction
 
 function! BlamerToggle() abort
