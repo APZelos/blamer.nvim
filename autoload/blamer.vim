@@ -336,6 +336,7 @@ endfunction
 
 function! blamer#Enable() abort
   let g:blamer_enabled = 1
+  let s:blamer_buffer_enabled = blamer#IsBufferGitTracked()
 endfunction
 
 function! blamer#Disable() abort
@@ -363,10 +364,6 @@ function! blamer#DisableShow() abort
 endfunction
 
 function! blamer#Init() abort
-  if g:blamer_enabled == 0
-    return
-  endif
-
   if g:blamer_is_initialized == 1
     return
   endif
