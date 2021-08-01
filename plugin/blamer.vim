@@ -10,6 +10,12 @@ set cpo&vim
 
 let g:blamer_enabled = get(g:, 'blamer_enabled', 0)
 
+function! BlamerOpenCommit() abort
+  if g:blamer_enabled == 1
+    call blamer#OpenCommit()
+  endif
+endfunction
+
 function! BlamerShow() abort
   call blamer#Enable()
   call blamer#EnableShow()
@@ -33,6 +39,7 @@ call blamer#Init()
 :command! -nargs=0 BlamerShow call BlamerShow()
 :command! -nargs=0 BlamerHide call BlamerHide()
 :command! -nargs=0 BlamerToggle call BlamerToggle()
+:command! -nargs=0 BlamerOpenCommit call BlamerOpenCommit()
 
 highlight default link Blamer Comment
 

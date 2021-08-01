@@ -122,6 +122,47 @@ function! blamer#ParseCommitDataLine(line) abort
   return l:info
 endfunction
 
+function! blamer#OutsideGitRepo(result) abort
+  if result =~? 'fatal' && result =~? 'not a git repository'
+    " Not a git repository
+    let g:blamer_buffer_enabled = 0
+    echo '[blamer.nvim] Not a git repository'
+    return ''
+  endif
+
+  " Known git errors will be silenced
+  if result =~? 'no matches found'
+    return ''
+  elseif result =~? 'no such path'
+    return ''
+  elseif result =~? 'is outside repository'
+    return ''
+  elseif result =~? 'has only' && result =~? 'lines'
+    return ''
+  elseif result =~? 'no such ref'
+    return ''
+  endif
+
+  " Echo unknown errors in order to catch them
+  echo '[blamer.nvim] ' . result
+  return ''
+endfunction
+
+function! blamer#GetMessage(file, line_number) abort
+  let l:dir_path = shellescape(s:substitute_path_separator(expand('%:h')))
+  let l:file_path_escaped = shellescape(a:file)
+  let l:command = 'git -C ' . l:dir_path . ' --no-pager blame --line-porcelain -L ' . line_number . ',' . line_number . ' -- ' . l:file_path_escaped
+  let l:result = system(l:command)
+  echo l:result
+
+  let hash = split(l:lines[0], ' ')[0]
+  let l:hash_is_empty = empty(matchstr(hash,'\c[0-9a-f]\{40}'))
+  
+  if l:hash_is_empty
+    return blamer#OutsideGitRepo(l:result)
+  endif
+endfunction 
+
 function! blamer#GetMessages(file, line_number, line_count) abort
   let l:dir_path = shellescape(s:substitute_path_separator(expand('%:h')))
   let l:end_line = a:line_number + a:line_count - 1
@@ -134,29 +175,7 @@ function! blamer#GetMessages(file, line_number, line_count) abort
   let l:hash_is_empty = empty(matchstr(hash,'\c[0-9a-f]\{40}'))
 
   if l:hash_is_empty
-    if l:result =~? 'fatal' && l:result =~? 'not a git repository'
-      " Not a git repository
-      let g:blamer_buffer_enabled = 0
-      echo '[blamer.nvim] Not a git repository'
-      return ''
-    endif
-
-    " Known git errors will be silenced
-    if l:result =~? 'no matches found'
-      return ''
-    elseif l:result =~? 'no such path'
-      return ''
-    elseif l:result =~? 'is outside repository'
-      return ''
-    elseif l:result =~? 'has only' && l:result =~? 'lines'
-      return ''
-    elseif l:result =~? 'no such ref'
-      return ''
-    endif
-
-    " Echo unknown errors in order to catch them
-    echo '[blamer.nvim] ' . l:result
-    return ''
+    return blamer#OutsideGitRepo(l:result)
   endif
 
   let l:TAB_ASCII = 9
@@ -242,18 +261,18 @@ function! blamer#Show() abort
   endif
 
   let l:buffer_number = bufnr('')
-	let l:line_numbers = s:GetLines()
+        let l:line_numbers = s:GetLines()
 
-	let l:is_in_visual_mode = len(l:line_numbers) > 1
-	if l:is_in_visual_mode == 1 && s:blamer_show_in_visual_modes == 0
-	  return
-	endif
+        let l:is_in_visual_mode = len(l:line_numbers) > 1
+        if l:is_in_visual_mode == 1 && s:blamer_show_in_visual_modes == 0
+          return
+        endif
 
   let l:line_count = len(l:line_numbers)
   let l:messages = blamer#GetMessages(l:file_path, l:line_numbers[0], l:line_count)
   let l:index = 0
 
-	for line_number in l:line_numbers
+  for line_number in l:line_numbers
     let l:message = l:messages[l:index]
     if has('nvim')
       call blamer#SetVirtualText(l:buffer_number, line_number, l:message)
@@ -395,3 +414,14 @@ endfunction
 
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
+
+function! blamer#OpenCommit() abort
+  let l:file_path = shellescape(s:substitute_path_separator(expand('%:p')))
+  if empty(l:file_path) 
+    return 0
+  endif
+
+  let l:current_line = line('.')
+  let l:msgs = blamer#GetMessage(l:file_path, l:current_line)
+  
+endfunction
