@@ -137,7 +137,6 @@ function! blamer#GetMessages(file, line_number, line_count) abort
     if l:result =~? 'fatal' && l:result =~? 'not a git repository'
       " Not a git repository
       let g:blamer_buffer_enabled = 0
-      echo '[blamer.nvim] Not a git repository'
       return ''
     endif
 
