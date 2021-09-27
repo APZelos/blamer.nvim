@@ -154,7 +154,7 @@ function! blamer#GetMessages(file, line_number, line_count) abort
     endif
 
     " Echo unknown errors in order to catch them
-    echo '[blamer.nvim] ' . l:result
+    " echo '[blamer.nvim] ' . l:result
     return ''
   endif
 
@@ -236,7 +236,7 @@ function! blamer#Show() abort
 
   let l:file_path = s:substitute_path_separator(expand('%:p'))
 
-  if empty(l:file_path) 
+  if empty(l:file_path)
     return
   endif
 
@@ -287,7 +287,7 @@ endfunction
 
 function! blamer#IsBufferGitTracked() abort
   let l:file_path = shellescape(s:substitute_path_separator(expand('%:p')))
-  if empty(l:file_path) 
+  if empty(l:file_path)
     return 0
   endif
 
