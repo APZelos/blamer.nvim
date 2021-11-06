@@ -195,7 +195,7 @@ endfunction
 
 function! blamer#SetVirtualText(buffer_number, line_number, message) abort
   let l:line_index = a:line_number - 1
-  call nvim_buf_set_virtual_text(a:buffer_number, s:blamer_namespace, l:line_index, [[s:blamer_prefix . a:message, 'Blamer']], {})
+  call nvim_buf_set_extmark(a:buffer_number, s:blamer_namespace, l:line_index, 0, {"hl_mode": "combine", "virt_text": [[s:blamer_prefix . a:message, 'Blamer']]})
 endfunction
 
 function! blamer#CreatePopup(buffer_number, line_number, message) abort
