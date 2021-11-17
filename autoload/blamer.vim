@@ -195,7 +195,11 @@ endfunction
 
 function! blamer#SetVirtualText(buffer_number, line_number, message) abort
   let l:line_index = a:line_number - 1
-  call nvim_buf_set_extmark(a:buffer_number, s:blamer_namespace, l:line_index, 0, {"hl_mode": "combine", "virt_text": [[s:blamer_prefix . a:message, 'Blamer']]})
+  if exists('*nvim_buf_set_extmark')
+    call nvim_buf_set_extmark(a:buffer_number, s:blamer_namespace, l:line_index, 0, {"hl_mode": "combine", "virt_text": [[s:blamer_prefix . a:message, 'Blamer']]})
+  else
+    call nvim_buf_set_virtual_text(a:buffer_number, s:blamer_namespace, l:line_index, [[s:blamer_prefix . a:message, 'Blamer']], {})
+  endif
 endfunction
 
 function! blamer#CreatePopup(buffer_number, line_number, message) abort
@@ -237,7 +241,7 @@ function! blamer#Show() abort
 
   let l:file_path = s:substitute_path_separator(expand('%:p'))
 
-  if empty(l:file_path) 
+  if empty(l:file_path)
     return
   endif
 
@@ -288,7 +292,7 @@ endfunction
 
 function! blamer#IsBufferGitTracked() abort
   let l:file_path = shellescape(s:substitute_path_separator(expand('%:p')))
-  if empty(l:file_path) 
+  if empty(l:file_path)
     return 0
   endif
 
