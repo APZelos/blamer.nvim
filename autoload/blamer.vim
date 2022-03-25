@@ -291,10 +291,11 @@ endfunction
 
 
 function! blamer#IsBufferGitTracked() abort
-  let l:file_path = shellescape(s:substitute_path_separator(expand('%:p')))
-  if empty(l:file_path)
+  let l:path = expand('%:p')
+  if empty(l:path)
     return 0
   endif
+  let l:file_path = shellescape(s:substitute_path_separator(l:path))
 
   let l:dir_path = shellescape(s:substitute_path_separator(expand('%:h')))
   let l:result = system('git -C ' . l:dir_path . ' ls-files --error-unmatch ' . l:file_path)
