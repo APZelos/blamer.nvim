@@ -22,6 +22,20 @@ call plug#end()
 
 2. Run `:PlugInstall`.
 
+#### Packer
+
+1. Add the following to `init.lua`
+
+```lua
+require('packer').startup(function(use)
+   -- other plugins ...
+   use 'APZelos/blamer.nvim'
+   -- other ...
+end)
+```
+
+2. Restart neovim and run `:PackerSync`.
+
 ## Configuration
 
 #### Enabled
@@ -36,6 +50,12 @@ Default: `0`
 
 ```
 let g:blamer_enabled = 1
+```
+
+In lua:
+
+```
+vim.g.blamer_enabled = true
 ```
 
 #### Delay
